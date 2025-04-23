@@ -20,3 +20,27 @@ jobs:
         run: npm install
       - name: Run Tests
         run: npm test
+
+      - name: Build Frontend
+        run: cd frontend && npm install && npm run build
+
+      - name: Build Backend
+        run: cd backend && npm install
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Deploy Frontend to S3
+        run: aws s3 sync frontend/dist s3://your-s3-bucket --delete
+
+      - name: Deploy Backend to Elastic Beanstalk
+        run: |
+          zip backend.zip -r backend
+          aws elasticbeanstalk update-environment --environment-name your-elastic-beanstalk-environment --version-label backend-${GITHUB_SHA}
+          aws s3 cp backend.zip s3://your-s3-bucket/backend.zip
+          aws elasticbeanstalk create-application-version --application-name your-elastic-beanstalk-application --version-label backend-${GITHUB_SHA} --source-bundle S3Bucket=your-s3-bucket,S3Key=backend.zip
+          aws elasticbeanstalk update-environment --environment-name your-elastic-beanstalk-environment --version-label backend-${GITHUB_SHA}
